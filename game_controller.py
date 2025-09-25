@@ -9,26 +9,23 @@ class Character:
         self.atk = atk
 
 class Button:
-    def __init__(self, width, height):
+    def __init__(self, width, height, action=None):
         self.width = width
         self.height = height
+        self.action = action
 
-    def draw(self, x, y, action=None):
+    def draw(self, x, y):
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
 
         if (x < mouse[0] < x + self.width) and (y < mouse[1] < y + self.height):
             pygame.draw.rect(screen, (23, 204, 58), (x, y, self.width, self.height))
                 
-            if click[0] == 1 and action != None:
-                print("Button pressed")
-                action()
+            if click[0] == 1 and self.action != None:
+                self.action()
 
         else:
             pygame.draw.rect(screen, (13, 162, 58), (x, y, self.width, self.height))
-        
-
-
 
 def game_state():
     is_running = True
