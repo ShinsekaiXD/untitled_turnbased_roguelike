@@ -6,7 +6,7 @@ clock = pygame.time.Clock()
 
 class Character:
     def __init__(self, hp, atk):
-        self.hp = hp
+        self.hp = hp - 2 # ДЛЯ ТЕСТОВ, ПОТОМ УБРАТЬ!!!
         self.max_hp = hp  
         self.atk = atk
 
@@ -34,20 +34,22 @@ class Button:
             self.clicked = False
 
 player = Character(hp=5, atk=3)
+enemy = Character(hp=5, atk=3)  
 
 font = pygame.font.Font(None, 24)  
 
 def attack_action():
-    player.hp = max(0, player.hp - 1)
-    print(f"Player HP: {player.hp}/{player.max_hp}")
+    enemy.hp = max(0, enemy.hp - 1)
+    print(f"Enemy HP: {enemy.hp}/{enemy.max_hp}")
 
 def heal_action():
     player.hp = min(player.max_hp, player.hp + 1)  
     print(f"Player HP: {player.hp}/{player.max_hp}")
 
 def reset_action():
-    player.hp = player.max_hp  
-    print(f"Reset. HP: {player.hp}/{player.max_hp}")
+    player.hp = player.max_hp - 2 # ДЛЯ ТЕСТОВ, ПОТОМ УБРАТЬ!!!
+    enemy.hp = enemy.max_hp - 2 # ДЛЯ ТЕСТОВ, ПОТОМ УБРАТЬ!!!
+    print(f"Reset. Player HP: {player.hp}/{player.max_hp}, Enemy HP: {enemy.hp}/{enemy.max_hp}")
 
 def draw_player(x, y, size=50):
     
@@ -80,6 +82,37 @@ def draw_player(x, y, size=50):
     hp_percentage = player.hp / player.max_hp
     pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, bar_width * hp_percentage, bar_height))
 
+def draw_enemy(x, y, size=50):
+    
+    cube_color = (200, 100, 100)  
+    pygame.draw.rect(screen, cube_color, (x, y, size, size))
+    
+    pygame.draw.rect(screen, (255, 255, 255), (x, y, size, size), 2)
+    
+    hp_text = f"HP: {enemy.hp}/{enemy.max_hp}"
+    atk_text = f"ATK: {enemy.atk}"
+    
+    hp_surface = font.render(hp_text, True, (255, 255, 255))  
+    atk_surface = font.render(atk_text, True, (255, 255, 255))
+    
+    hp_x = x + (size // 2) - (hp_surface.get_width() // 2)
+    hp_y = y + size + 5
+    atk_x = x + (size // 2) - (atk_surface.get_width() // 2)
+    atk_y = hp_y + hp_surface.get_height() + 2
+
+    screen.blit(hp_surface, (hp_x, hp_y))
+    screen.blit(atk_surface, (atk_x, atk_y))
+    
+    bar_width = size
+    bar_height = 5
+    bar_x = x
+    bar_y = y - 10
+    
+    pygame.draw.rect(screen, (200, 0, 0), (bar_x, bar_y, bar_width, bar_height))
+
+    hp_percentage = enemy.hp / enemy.max_hp
+    pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, bar_width * hp_percentage, bar_height))
+
 def game_state():
     is_running = True
     
@@ -95,6 +128,7 @@ def game_state():
         screen.fill((20, 20, 20))
 
         draw_player(150, 150, size=60)
+        draw_enemy(390, 150, size=60)  
 
         attack_button.draw(100, 300)
         heal_button.draw(250, 300)
