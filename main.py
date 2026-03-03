@@ -1,15 +1,16 @@
 import pygame
-from functools import partial  
-
+import random  
+from items import ITEMS
 pygame.init()
 screen = pygame.display.set_mode((600, 400))
 clock = pygame.time.Clock()
 
 class Character:
-    def __init__(self, hp=99, atk=99):
+    def __init__(self, hp=99, atk=99, magic=99):
         self.hp = hp
         self.max_hp = hp  
         self.atk = atk
+        self.magic = magic
         self.gold = 0  
 
 class Button:
@@ -41,9 +42,10 @@ class state:
 
 gamestate = state()
 
-player = Character(hp=5, atk=3)
-enemy = Character(hp=5, atk=1)  
-global phase_running, game_running
+player = Character(hp=5, atk=3, magic=1)
+enemy = None
+global phase_running, game_running, score
+score = 0
 game_running = True
 phase_running = True
 
@@ -56,7 +58,7 @@ def attack_action():
     enemy_action()
 
 def heal_action():
-    player.hp = min(player.max_hp, player.hp + 1)  
+    player.hp = min(player.max_hp, player.hp + player.magic)  
     print(f"Player HP: {player.hp}/{player.max_hp}")
     enemy_action()
 
@@ -65,13 +67,13 @@ def enemy_action():
     print(f"Player HP: {player.hp}/{player.max_hp}")
 
 def reset_action():
+    global score
     player.max_hp = 5
     player.hp = player.max_hp
     player.atk = 3
-    enemy.max_hp = 5    
-    enemy.hp = enemy.max_hp
+    player.magic = 1
     player.gold = 0
-    print(f"Reset. Player HP: {player.hp}/{player.max_hp}, Enemy HP: {enemy.hp}/{enemy.max_hp}")
+    score = 0
 
 def start_game_action():
     global phase_running
@@ -82,43 +84,31 @@ def start_game_action():
 def start_battle_action():
     global phase_running
     gamestate.state = 'Battle'
-    enemy.max_hp = round(enemy.max_hp * 1.2)
+    enemy.max_hp = round(enemy.max_hp * (1.2 ** score))
     enemy.hp = enemy.max_hp
     phase_running = False
 # ------------------------------------
 
-# --- Функции для покупок в магазине ---
-ITEMS = [
-    {
-        "id": "hp_up",
-        "name": "HP +2",
-        "price": 5,
-        "effect": lambda: player.__setattr__('max_hp', player.max_hp + 2) or player.__setattr__('hp', player.hp + 2) 
-    },
-    {
-        "id": "atk_up",
-        "name": "ATK +1",
-        "price": 5,
-        "effect": lambda: player.__setattr__('atk', player.atk + 1)
-    },
-    {
-        "id": "full_heal",
-        "name": "Full Heal",
-        "price": 3,
-        "effect": lambda: player.__setattr__('hp', player.max_hp)
-    }
-]
+def apply_effect(item,player):
+    if item['effect'] == "hp_up":
+        player.max_hp += 2
+        player.hp += 2
+    elif item['effect'] == "atk_up":
+        player.atk += 1
+    elif item['effect'] == "full_heal":
+        player.hp = player.max_hp
+    elif item['effect'] == "magic_up":
+        player.magic += 1
 
-def make_buy_action(item):
-    """Возвращает функцию, которая выполняет покупку указанного предмета"""
-    def buy():
-        if player.gold >= item["price"]:
-            player.gold -= item["price"]
-            item["effect"]()
-            print(f"Куплено: {item['name']}. Осталось золота: {player.gold}")
-        else:
-            print(f"Не хватает золота! Нужно: {item['price']}, у вас: {player.gold}")
-    return buy
+
+def create_enemy():
+    base_hp = 5
+    base_atk = 1
+    multiplier = 1.2 ** score
+    hp = int(base_hp * multiplier)
+    atk = int(base_atk * multiplier) or 1  # минимум 1
+    return Character(hp=hp, atk=atk)
+
 # ------------------------------------
 
 # --- Команды отрисовки ---
@@ -130,7 +120,7 @@ def draw_player(x, y, size=50):
     
     hp_text = f"HP: {player.hp}/{player.max_hp}"
     atk_text = f"ATK: {player.atk}"
-    
+
     hp_surface = font.render(hp_text, True, (255, 255, 255))  
     atk_surface = font.render(atk_text, True, (255, 255, 255))
     
@@ -185,7 +175,9 @@ def draw_enemy(x, y, size=50):
 
 # --- Сцены игры ---
 def battle():
-    global phase_running, game_running
+    global phase_running, game_running, score, enemy
+
+    enemy = create_enemy()
 
     attack_button = Button(100, 50, action=attack_action)
     heal_button = Button(100, 50, action=heal_action)
@@ -218,6 +210,8 @@ def battle():
             phase_running = False
         elif enemy.hp <= 0:
             player.gold += 10 
+            score += 1
+            print(score)
             gamestate.state = 'Shop'
             phase_running = False
 
@@ -234,10 +228,10 @@ def menu():
 
         screen.fill((20, 20, 20))
 
-        start_button.draw(200, 260)
+        start_button.draw(250, 260)
 
-        label = font.render("start game", True, (255, 255, 255))
-        screen.blit(label, (250, 280))
+        label = font.render("Start game", True, (255, 255, 255))
+        screen.blit(label, (250, 240))
 
         pygame.display.update()
         clock.tick(60)
@@ -245,22 +239,58 @@ def menu():
 def shop():
     global phase_running, game_running
 
+    reroll_price = 2
+    current_items = random.sample(ITEMS, 3)
+
+    def update_item_buttons():
+        nonlocal item_buttons
+        item_buttons = []
+        start_x = 50
+        start_y = 150
+        spacing = 150
+        for i, item in enumerate(current_items):
+            btn = Button(100, 50, action=lambda idx=i: buy_item(idx))
+            item_buttons.append({
+                "button": btn,
+                "x": start_x + i * spacing,
+                "y": start_y,
+                "name": item["name"],
+                "price": item["price"]
+            })
+
+    def buy_item(index):
+        item = current_items[index]
+        if player.gold >= item["price"]:
+            player.gold -= item["price"]
+            apply_effect(item, player)
+            new_item = random.choice(ITEMS)
+            current_items[index] = new_item
+            update_item_buttons()
+            print(f"Куплено: {item['name']}. Осталось золота: {player.gold}")
+            while pygame.mouse.get_pressed()[0]:
+                pygame.event.pump()
+                clock.tick(60)
+        else:
+            print(f"Не хватает золота! Нужно: {item['price']}, у вас: {player.gold}")
+
+    def reroll_action():
+        nonlocal current_items
+        if player.gold >= reroll_price:
+            player.gold -= reroll_price
+            current_items = random.sample(ITEMS, 3)
+            update_item_buttons()
+            print(f"Reroll! Новые предметы. Золото: {player.gold}")
+            while pygame.mouse.get_pressed()[0]:
+                pygame.event.pump()
+                clock.tick(60)
+        else:
+            print(f"Не хватает золота для reroll! Нужно: {reroll_price}")
+
     continue_button = Button(100, 50, action=start_battle_action)
+    reroll_button = Button(100, 50, action=reroll_action)
 
     item_buttons = []
-    start_x = 50
-    start_y = 150
-    spacing = 150  
-
-    for i, item in enumerate(ITEMS):
-        btn = Button(100, 50, action=make_buy_action(item))
-        item_buttons.append({
-            "button": btn,
-            "x": start_x + i * spacing,
-            "y": start_y,
-            "name": item["name"],
-            "price": item["price"]
-        })
+    update_item_buttons()
 
     while phase_running:
         for event in pygame.event.get():
@@ -275,12 +305,24 @@ def shop():
             text = font.render(f"{it['name']} ({it['price']} gold)", True, (255, 255, 255))
             screen.blit(text, (it["x"], it["y"] - 20))
 
-        continue_button.draw(200, 260)
-        label = font.render("next battle", True, (255, 255, 255))
-        screen.blit(label, (250, 280))
+        reroll_button.draw(50, 300)
+        reroll_text = font.render(f"Reroll ({reroll_price} gold)", True, (255, 255, 255))
+        screen.blit(reroll_text, (50, 280))
+
+        continue_button.draw(400, 300)
+        continue_label = font.render("next battle", True, (255, 255, 255))
+        screen.blit(continue_label, (400, 280))
 
         gold_text = font.render(f"Gold: {player.gold}", True, (255, 255, 0))
         screen.blit(gold_text, (10, 10))
+
+        hp_text = font.render(f"HP: {player.hp}/{player.max_hp}", True, (255, 255, 255))
+        atk_text = font.render(f"ATK: {player.atk}", True, (255, 255, 255))
+        magic_text = font.render(f"MAGIC: {player.magic}", True, (255, 255, 255))
+
+        screen.blit(hp_text, (500, 10))
+        screen.blit(atk_text, (500, 30))
+        screen.blit(magic_text, (500, 50))
 
         pygame.display.update()
         clock.tick(60)
