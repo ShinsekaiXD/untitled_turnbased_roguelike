@@ -11,7 +11,8 @@ class Character:
         self.max_hp = hp  
         self.atk = atk
         self.magic = magic
-        self.gold = 0  
+        self.gold = 0 
+        self.actions = ["Attack", "Heal"]  
 
 class Button:
     def __init__(self, width, height, action=None):
@@ -56,11 +57,25 @@ def attack_action():
     enemy.hp = max(0, enemy.hp - player.atk)
     print(f"Enemy HP: {enemy.hp}/{enemy.max_hp}")
     enemy_action()
+    while pygame.mouse.get_pressed()[0]:
+        pygame.event.pump()
+        clock.tick(60)
 
 def heal_action():
     player.hp = min(player.max_hp, player.hp + player.magic)  
     print(f"Player HP: {player.hp}/{player.max_hp}")
     enemy_action()
+    while pygame.mouse.get_pressed()[0]:
+        pygame.event.pump()
+        clock.tick(60)
+
+def magic_attack_action():
+    enemy.hp = max(0, enemy.hp - player.magic)
+    print(f"Magic attack! Enemy HP: {enemy.hp}/{enemy.max_hp}")
+    enemy_action()
+    while pygame.mouse.get_pressed()[0]:
+        pygame.event.pump()
+        clock.tick(60)
 
 def enemy_action():
     player.hp = max(0, player.hp - enemy.atk)
@@ -73,6 +88,7 @@ def reset_action():
     player.atk = 3
     player.magic = 1
     player.gold = 0
+    player.actions = ["Attack", "Heal"]
     score = 0
 
 def start_game_action():
@@ -80,6 +96,9 @@ def start_game_action():
     reset_action()
     gamestate.state = 'Battle'
     phase_running = False
+    while pygame.mouse.get_pressed()[0]:
+        pygame.event.pump()
+        clock.tick(60)
 
 def start_battle_action():
     global phase_running
@@ -87,6 +106,9 @@ def start_battle_action():
     enemy.max_hp = round(enemy.max_hp * (1.2 ** score))
     enemy.hp = enemy.max_hp
     phase_running = False
+    while pygame.mouse.get_pressed()[0]:
+        pygame.event.pump()
+        clock.tick(60)
 # ------------------------------------
 
 def apply_effect(item,player):
@@ -99,6 +121,9 @@ def apply_effect(item,player):
         player.hp = player.max_hp
     elif item['effect'] == "magic_up":
         player.magic += 1
+    elif item['effect'] == "unlock_magic_attack":
+        if "Magic" not in player.actions:
+            player.actions.append("Magic")
 
 
 def create_enemy():
@@ -106,7 +131,7 @@ def create_enemy():
     base_atk = 1
     multiplier = 1.2 ** score
     hp = int(base_hp * multiplier)
-    atk = int(base_atk * multiplier) or 1  # минимум 1
+    atk = int(base_atk * multiplier) or 1  
     return Character(hp=hp, atk=atk)
 
 # ------------------------------------
@@ -179,8 +204,23 @@ def battle():
 
     enemy = create_enemy()
 
-    attack_button = Button(100, 50, action=attack_action)
-    heal_button = Button(100, 50, action=heal_action)
+    action_functions = {
+        "Attack": attack_action,
+        "Heal": heal_action,
+        "Magic": magic_attack_action
+    }
+
+    buttons = []  
+    button_width, button_height = 100, 50
+    start_x = 100
+    spacing = 150
+    y = 300
+
+    for i, action_name in enumerate(player.actions):
+        if action_name in action_functions:
+            btn = Button(button_width, button_height, action=action_functions[action_name])
+            x = start_x + i * spacing
+            buttons.append((btn, x, y, action_name))
 
     while phase_running:
         for event in pygame.event.get():
@@ -192,15 +232,11 @@ def battle():
 
         draw_player(150, 150, size=60)
         draw_enemy(390, 150, size=60)  
-
-        attack_button.draw(100, 300)
-        heal_button.draw(250, 300)
-
-        attack_label = font.render("Attack", True, (255, 255, 255))
-        heal_label = font.render("Heal", True, (255, 255, 255))
-
-        screen.blit(attack_label, (100, 280))
-        screen.blit(heal_label, (250, 280))
+        
+        for btn, x, y, label in buttons:
+            btn.draw(x, y)
+            text = font.render(label, True, (255, 255, 255))
+            screen.blit(text, (x, y - 20))
 
         pygame.display.update()
         clock.tick(60)
