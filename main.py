@@ -1,7 +1,7 @@
 import pygame
 import random  
 from items import ITEMS
-from enemies import ENEMIES
+from enemies import ENEMIES, BOSSES
 from battle_actions import Battle
 
 pygame.init()
@@ -9,7 +9,7 @@ screen = pygame.display.set_mode((600, 400))
 clock = pygame.time.Clock()
 
 class Character:
-    def __init__(self, hp=99, atk=99, magic=99):
+    def __init__(self, hp=1, atk=1, magic=1):
         self.hp = hp
         self.max_hp = hp  
         self.atk = atk
@@ -87,6 +87,7 @@ def wait_for_release():
         clock.tick(60)
 # ------------------------------------
 
+# --- Служебные функции ---
 def apply_effect(item,player):
     if item['effect'] == "hp_up":
         player.max_hp += 2
@@ -104,8 +105,12 @@ def apply_effect(item,player):
 
 def create_enemy():
     global enemy_data
-    enemy_data = random.choice(ENEMIES)
-    multiplier = 1.2 ** score
+    if score % 4 != 0 or score == 0:
+        enemy_data = random.choice(ENEMIES)
+        multiplier = 1.2 ** score
+    elif score % 4 == 0:
+        enemy_data = random.choice(BOSSES)
+        multiplier = 1
     hp = int(enemy_data["base_hp"] * multiplier)
     atk = int(enemy_data["base_atk"] * multiplier) or 1  
     return Character(hp=hp, atk=atk)
@@ -218,7 +223,7 @@ def battle():
             gamestate.state = 'Menu'
             phase_running = False
         elif enemy.hp <= 0:
-            player.gold += 10 
+            player.gold += enemy_data["reward"]
             score += 1
             print(score)
             gamestate.state = 'Shop'
@@ -250,13 +255,13 @@ def shop():
 
     reroll_price = 2
     current_items = random.sample(ITEMS, 3)
-
+    
     def update_item_buttons():
         nonlocal item_buttons
         item_buttons = []
         start_x = 50
         start_y = 150
-        spacing = 150
+        spacing = 175
         for i, item in enumerate(current_items):
             btn = Button(100, 50, action=lambda idx=i: buy_item(idx))
             item_buttons.append({

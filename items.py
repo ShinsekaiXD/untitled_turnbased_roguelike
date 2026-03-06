@@ -1,27 +1,32 @@
 ITEMS = [
     {
-        "name" : "HP +2",
+        "name" : "Bandage",
         "price" : 5,
-        "effect" : "hp_up"
+        "effect" : "hp_up",
+        "desc" : "+2 Max HP, heal 2 HP"
     },
     {
-        "name" : "ATK +1",
+        "name" : "Sharpening stone",
         "price" : 5,
-        "effect" : "atk_up" 
+        "effect" : "atk_up",
+        "desc" : "+1 Attack"
     },
     {
-        "name" : "Full Heal",
+        "name" : "Healing potion",
         "price" : 3,
-        "effect" : "full_heal" 
+        "effect" : "full_heal", 
+        "desc" : "Heal full HP"
     },
     {
-        "name" : "Magic +1",
+        "name" : "Book",
         "price" : 3,
-        "effect" : "magic_up"
+        "effect" : "magic_up",
+        "desc" : "+1 Magic"
     }, 
     {   
         "name" : "Magic Tome",
         "price" : 15,
-        "effect" : "unlock_magic_attack"
+        "effect" : "unlock_magic_attack",
+        "desc" : "Unlocks magic attack"
     }
 ]
