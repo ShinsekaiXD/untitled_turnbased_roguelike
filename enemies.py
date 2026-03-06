@@ -16,7 +16,7 @@ BOSSES = [
         "base_hp" : 50,
         "base_atk" : 1,
         "reward" : 40,
-        "actions" : ["attack"],
+        "actions" : ["attack", "stomp"],
         "color" : (105,145,235)
     }
 ]

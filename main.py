@@ -9,13 +9,13 @@ screen = pygame.display.set_mode((600, 400))
 clock = pygame.time.Clock()
 
 class Character:
-    def __init__(self, hp=1, atk=1, magic=1):
+    def __init__(self, hp=1, atk=1, magic=1, actions=[]):
         self.hp = hp
         self.max_hp = hp  
         self.atk = atk
         self.magic = magic
         self.gold = 0 
-        self.actions = ["attack", "heal"]  
+        self.actions = actions  
 
 class Button:
     def __init__(self, width, height, action=None):
@@ -46,7 +46,7 @@ class state:
 
 gamestate = state()
 
-player = Character(hp=5, atk=3, magic=1)
+player = Character(hp=5, atk=3, magic=1, actions=["slash", "heal"])
 enemy = None
 global phase_running, game_running, score
 score = 0
@@ -63,7 +63,7 @@ def reset_action():
     player.atk = 3
     player.magic = 1
     player.gold = 0
-    player.actions = ["attack", "heal"]
+    player.actions = ["slash", "heal"]
     score = 0
 
 def start_game_action():
@@ -112,8 +112,9 @@ def create_enemy():
         enemy_data = random.choice(BOSSES)
         multiplier = 1
     hp = int(enemy_data["base_hp"] * multiplier)
-    atk = int(enemy_data["base_atk"] * multiplier) or 1  
-    return Character(hp=hp, atk=atk)
+    atk = int(enemy_data["base_atk"] * multiplier) or 1 
+    actions = enemy_data["actions"]
+    return Character(hp=hp, atk=atk, actions=actions)
 
 # ------------------------------------
 
