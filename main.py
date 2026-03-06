@@ -1,6 +1,9 @@
 import pygame
 import random  
 from items import ITEMS
+from enemies import ENEMIES
+from battle_actions import Battle
+
 pygame.init()
 screen = pygame.display.set_mode((600, 400))
 clock = pygame.time.Clock()
@@ -12,7 +15,7 @@ class Character:
         self.atk = atk
         self.magic = magic
         self.gold = 0 
-        self.actions = ["Attack", "Heal"]  
+        self.actions = ["attack", "heal"]  
 
 class Button:
     def __init__(self, width, height, action=None):
@@ -53,34 +56,6 @@ phase_running = True
 font = pygame.font.Font(None, 24)  
 
 # --- Действия для кнопок ---
-def attack_action():
-    enemy.hp = max(0, enemy.hp - player.atk)
-    print(f"Enemy HP: {enemy.hp}/{enemy.max_hp}")
-    enemy_action()
-    while pygame.mouse.get_pressed()[0]:
-        pygame.event.pump()
-        clock.tick(60)
-
-def heal_action():
-    player.hp = min(player.max_hp, player.hp + player.magic)  
-    print(f"Player HP: {player.hp}/{player.max_hp}")
-    enemy_action()
-    while pygame.mouse.get_pressed()[0]:
-        pygame.event.pump()
-        clock.tick(60)
-
-def magic_attack_action():
-    enemy.hp = max(0, enemy.hp - player.magic)
-    print(f"Magic attack! Enemy HP: {enemy.hp}/{enemy.max_hp}")
-    enemy_action()
-    while pygame.mouse.get_pressed()[0]:
-        pygame.event.pump()
-        clock.tick(60)
-
-def enemy_action():
-    player.hp = max(0, player.hp - enemy.atk)
-    print(f"Player HP: {player.hp}/{player.max_hp}")
-
 def reset_action():
     global score
     player.max_hp = 5
@@ -88,7 +63,7 @@ def reset_action():
     player.atk = 3
     player.magic = 1
     player.gold = 0
-    player.actions = ["Attack", "Heal"]
+    player.actions = ["attack", "heal"]
     score = 0
 
 def start_game_action():
@@ -96,9 +71,7 @@ def start_game_action():
     reset_action()
     gamestate.state = 'Battle'
     phase_running = False
-    while pygame.mouse.get_pressed()[0]:
-        pygame.event.pump()
-        clock.tick(60)
+    wait_for_release()
 
 def start_battle_action():
     global phase_running
@@ -106,6 +79,9 @@ def start_battle_action():
     enemy.max_hp = round(enemy.max_hp * (1.2 ** score))
     enemy.hp = enemy.max_hp
     phase_running = False
+    wait_for_release()
+
+def wait_for_release():
     while pygame.mouse.get_pressed()[0]:
         pygame.event.pump()
         clock.tick(60)
@@ -122,16 +98,16 @@ def apply_effect(item,player):
     elif item['effect'] == "magic_up":
         player.magic += 1
     elif item['effect'] == "unlock_magic_attack":
-        if "Magic" not in player.actions:
-            player.actions.append("Magic")
+        if "magic_attack" not in player.actions:
+            player.actions.append("magic_attack")
 
 
 def create_enemy():
-    base_hp = 5
-    base_atk = 1
+    global enemy_data
+    enemy_data = random.choice(ENEMIES)
     multiplier = 1.2 ** score
-    hp = int(base_hp * multiplier)
-    atk = int(base_atk * multiplier) or 1  
+    hp = int(enemy_data["base_hp"] * multiplier)
+    atk = int(enemy_data["base_atk"] * multiplier) or 1  
     return Character(hp=hp, atk=atk)
 
 # ------------------------------------
@@ -167,9 +143,9 @@ def draw_player(x, y, size=50):
     hp_percentage = player.hp / player.max_hp
     pygame.draw.rect(screen, (0, 255, 0), (bar_x, bar_y, bar_width * hp_percentage, bar_height))
 
-def draw_enemy(x, y, size=50):
-    cube_color = (200, 100, 100)  
-    pygame.draw.rect(screen, cube_color, (x, y, size, size))
+def draw_enemy(x, y, enemy_color, size=50):
+    color =  enemy_color
+    pygame.draw.rect(screen, color, (x, y, size, size))
     
     pygame.draw.rect(screen, (255, 255, 255), (x, y, size, size), 2)
     
@@ -204,11 +180,7 @@ def battle():
 
     enemy = create_enemy()
 
-    action_functions = {
-        "Attack": attack_action,
-        "Heal": heal_action,
-        "Magic": magic_attack_action
-    }
+    battle_instance = Battle(player, enemy, clock)
 
     buttons = []  
     button_width, button_height = 100, 50
@@ -217,10 +189,11 @@ def battle():
     y = 300
 
     for i, action_name in enumerate(player.actions):
-        if action_name in action_functions:
-            btn = Button(button_width, button_height, action=action_functions[action_name])
+        if hasattr(battle_instance, action_name):
+            btn = Button(button_width, button_height, action=getattr(battle_instance, action_name))
             x = start_x + i * spacing
             buttons.append((btn, x, y, action_name))
+
 
     while phase_running:
         for event in pygame.event.get():
@@ -231,11 +204,11 @@ def battle():
         screen.fill((20, 20, 20))
 
         draw_player(150, 150, size=60)
-        draw_enemy(390, 150, size=60)  
+        draw_enemy(390, 150, enemy_data['color'], size=60)  
         
         for btn, x, y, label in buttons:
             btn.draw(x, y)
-            text = font.render(label, True, (255, 255, 255))
+            text = font.render(label.replace("_", " ").capitalize(), True, (255, 255, 255))
             screen.blit(text, (x, y - 20))
 
         pygame.display.update()
@@ -303,9 +276,7 @@ def shop():
             current_items[index] = new_item
             update_item_buttons()
             print(f"Куплено: {item['name']}. Осталось золота: {player.gold}")
-            while pygame.mouse.get_pressed()[0]:
-                pygame.event.pump()
-                clock.tick(60)
+            wait_for_release()
         else:
             print(f"Не хватает золота! Нужно: {item['price']}, у вас: {player.gold}")
 
@@ -316,9 +287,7 @@ def shop():
             current_items = random.sample(ITEMS, 3)
             update_item_buttons()
             print(f"Reroll! Новые предметы. Золото: {player.gold}")
-            while pygame.mouse.get_pressed()[0]:
-                pygame.event.pump()
-                clock.tick(60)
+            wait_for_release()
         else:
             print(f"Не хватает золота для reroll! Нужно: {reroll_price}")
 
