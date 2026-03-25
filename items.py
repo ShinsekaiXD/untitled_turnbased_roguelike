@@ -17,7 +17,7 @@ ITEMS = [
         "effect" : "full_heal", 
         "desc" : "Heal full HP"
     },
-    {
+    {   
         "name" : "Book",
         "price" : 3,
         "effect" : "magic_up",

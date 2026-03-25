@@ -5,7 +5,7 @@ ENEMIES = [
         "base_hp" : 5,
         "base_atk" : 1,
         "reward" : 10,
-        "actions" : ["attack"],
+        "actions" : ["attack","poison"],
         "color" : (125,195,235)
     }
 ]
